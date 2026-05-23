@@ -21,7 +21,15 @@ class LocalEmbeddings(Embeddings):
         return self.model.encode([text], normalize_embeddings=True)[0].tolist()
 
 
-embeddings = LocalEmbeddings()
+_embeddings: LocalEmbeddings | None = None
+
+
+def get_embeddings() -> LocalEmbeddings:
+    global _embeddings
+    if _embeddings is None:
+        # Vercel deployment: defer model loading until indexing or retrieval actually needs embeddings.
+        _embeddings = LocalEmbeddings()
+    return _embeddings
 
 
 def _index_path() -> Path:
@@ -33,7 +41,7 @@ def _load() -> FAISS | None:
     path = _index_path()
     if not (path / "index.faiss").exists():
         return None
-    return FAISS.load_local(str(path), embeddings, allow_dangerous_deserialization=True)
+    return FAISS.load_local(str(path), get_embeddings(), allow_dangerous_deserialization=True)
 
 
 def index_text(filename: str, text: str) -> int:
@@ -45,7 +53,7 @@ def index_text(filename: str, text: str) -> int:
         existing.add_documents(docs)
         existing.save_local(str(_index_path()))
     else:
-        FAISS.from_documents(docs, embeddings).save_local(str(_index_path()))
+        FAISS.from_documents(docs, get_embeddings()).save_local(str(_index_path()))
     return len(chunks)
 
 

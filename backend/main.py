@@ -24,6 +24,7 @@ app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.frontend_origin, "http://127.0.0.1:5173"],
+    allow_origin_regex=settings.frontend_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,8 +51,22 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 
+@app.websocket("/api/ws")
+async def websocket_api_endpoint(websocket: WebSocket):
+    # Vercel deployment: frontend connects to the backend through the /api route prefix.
+    await websocket_endpoint(websocket)
+
+
 app.include_router(health.router)
 app.include_router(chat.router)
 app.include_router(upload.router)
 app.include_router(history.router)
 app.include_router(reports.router)
+
+# Vercel deployment: Services route the backend under /api. Registering both
+# unprefixed and prefixed routes keeps local uvicorn, Vite proxy, and Vercel routing compatible.
+app.include_router(health.router, prefix="/api")
+app.include_router(chat.router, prefix="/api")
+app.include_router(upload.router, prefix="/api")
+app.include_router(history.router, prefix="/api")
+app.include_router(reports.router, prefix="/api")

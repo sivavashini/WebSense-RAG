@@ -5,16 +5,17 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    // Vercel deployment: frontend code calls /api/*.
+    // During local Vite development, proxy those same paths to the local FastAPI server.
     proxy: {
-      '/chat': 'http://localhost:8000',
-      '/upload': 'http://localhost:8000',
-      '/history': 'http://localhost:8000',
-      '/stats': 'http://localhost:8000',
-      '/health': 'http://localhost:8000',
-      '/reports': 'http://localhost:8000',
-      '/ws': {
-        target: 'ws://localhost:8000',
+      '/api/ws': {
+        target: process.env.VITE_BACKEND_DEV_WS_TARGET || 'ws://127.0.0.1:8000',
         ws: true,
+        changeOrigin: true,
+      },
+      '/api': {
+        target: process.env.VITE_BACKEND_DEV_TARGET || 'http://127.0.0.1:8000',
+        changeOrigin: true,
       },
     },
   },
